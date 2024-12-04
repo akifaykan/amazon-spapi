@@ -40,7 +40,7 @@ class SPAPIService implements SPAPIServiceInterface
             return $response->json()['access_token'];
         }
 
-        throw new \Exception('Unable to fetch access token');
+        throw new \Exception('Unable to fetch access token: ' . $response->body());
     }
 
     /**
@@ -48,12 +48,19 @@ class SPAPIService implements SPAPIServiceInterface
      */
     public function makeRequest(string $method, string $endpoint, array $queryParams = [], array $body = [])
     {
-        $token = $this->getAccessToken();
+        $accessToken = $this->getAccessToken();
 
-        $response = Http::withToken($token)->$method("{$this->baseUrl}/{$endpoint}", [
-            'query' => $queryParams,
-            'json' => $body,
-        ]);
+        $headers = [
+            'Authorization' => 'Bearer ' . $accessToken,
+            'Content-Type' => 'application/json',
+        ];
+
+        $url = "{$this->baseUrl}/{$endpoint}";
+        if (!empty($queryParams)) {
+            $url .= '?' . http_build_query($queryParams);
+        }
+
+        $response = Http::withHeaders($headers)->{$method}($url, $body);
 
         if ($response->successful()) {
             return $response->json();
